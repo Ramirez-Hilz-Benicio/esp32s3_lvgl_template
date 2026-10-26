@@ -10,9 +10,9 @@
  * in the order you want them registered. Keep SCREEN_MAX last.
  */
 typedef enum {
-    SCREEN_MAIN = 0,
-    /* SCREEN_SETTINGS, */
-    /* SCREEN_ERROR,    */
+    SCREEN_HOME = 0,    /* primera pantalla: la que carga ui_init() */
+    SCREEN_SYSTEM,
+    SCREEN_SETTINGS,
     SCREEN_MAX
 } ui_screens_t;
 
@@ -53,6 +53,16 @@ ui_screens_t  ui_screens_get_current(void);
  * but uses the registry, so the lifecycle engine tracks the transition.
  */
 void          ui_screens_navigate(ui_screens_t screen);
+
+/**
+ * Igual que ui_screens_navigate() pero con animación de transición
+ * (p. ej. LV_SCR_LOAD_ANIM_MOVE_LEFT para un swipe). Se ignora si ya hay
+ * una transición en curso.
+ */
+void          ui_screens_navigate_anim(ui_screens_t screen, lv_scr_load_anim_t anim);
+
+/** true mientras una animación de cambio de pantalla está en curso. */
+bool          ui_screens_is_transitioning(void);
 
 /**
  * Signal user activity (touch, encoder …). Resets the LVGL inactivity timer

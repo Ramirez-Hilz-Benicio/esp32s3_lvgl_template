@@ -13,6 +13,9 @@ extern "C" {
  */
 void lvgl_ui_start(void);
 
+/** Tiempo de inactividad hasta apagar la pantalla cuando el timeout está activo. */
+#define UI_SCREEN_OFF_TIMEOUT_MS  30000
+
 #ifdef __cplusplus
 }
 #endif

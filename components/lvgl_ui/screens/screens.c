@@ -1,5 +1,8 @@
 #include "screens.h"
-#include "scr_main.h"
+#include "scr_home.h"
+#include "scr_system.h"
+#include "scr_settings.h"
+#include "ui_nav.h"
 #include "ui.h"             /* Squareline export — screen object declarations */
 #include "esp_log.h"
 
@@ -18,7 +21,9 @@ static const char *TAG = "screens";
  * Squareline declares in its generated header (e.g. &ui_Screen1).
  */
 static const screen_config_t screen_configs[SCREEN_MAX] = {
-    [SCREEN_MAIN] = SCREEN_REGISTER("Main", ui_scrMain, main),
+    [SCREEN_HOME]     = SCREEN_REGISTER("Home",     ui_scrHome,     home),
+    [SCREEN_SYSTEM]   = SCREEN_REGISTER("System",   ui_scrSystem,   system),
+    [SCREEN_SETTINGS] = SCREEN_REGISTER("Settings", ui_scrSettings, settings),
 };
 
 static ui_screens_t s_active_screen = SCREEN_MAX; /* SCREEN_MAX = "unknown" */
@@ -54,6 +59,23 @@ void ui_screens_navigate(ui_screens_t screen)
     }
 }
 
+#define SCREEN_ANIM_TIME_MS  250
+
+void ui_screens_navigate_anim(ui_screens_t screen, lv_scr_load_anim_t anim)
+{
+    if (screen >= SCREEN_MAX || ui_screens_is_transitioning()) return;
+    const screen_config_t *cfg = &screen_configs[screen];
+    if (cfg->screen_obj && *cfg->screen_obj) {
+        lv_scr_load_anim(*cfg->screen_obj, anim, SCREEN_ANIM_TIME_MS, 0, false);
+    }
+}
+
+bool ui_screens_is_transitioning(void)
+{
+    lv_disp_t *disp = lv_disp_get_default();
+    return disp && disp->scr_to_load != NULL;
+}
+
 void ui_screens_on_activity(void)
 {
     lv_disp_trig_activity(lv_disp_get_default());
@@ -70,6 +92,7 @@ void ui_screens_step(void)
         }
         if (current < SCREEN_MAX) {
             ESP_LOGD(TAG, "→ %s", screen_configs[current].name);
+            ui_nav_set_active(current);   /* barra inferior persistente */
             if (screen_configs[current].init) {
                 screen_configs[current].init();
             }
