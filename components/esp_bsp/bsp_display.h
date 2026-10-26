@@ -55,6 +55,13 @@ void bsp_display_brightness_init(void);
 void bsp_display_set_brightness(uint8_t brightness);
 uint8_t bsp_display_get_brightness(void);
 
+/**
+ * Fade-in de la retroiluminación de 0 % a 100 % usando una animación LVGL
+ * (lv_anim) que escribe directamente el duty del LEDC en cada paso.
+ * Debe llamarse desde el contexto LVGL (callback, timer o con el lock tomado).
+ */
+void bsp_display_fade_in(uint32_t duration_ms);
+
 esp_lcd_panel_io_handle_t bsp_display_get_io_handle(void);
 esp_lcd_panel_handle_t bsp_display_get_panel_handle(void);
 

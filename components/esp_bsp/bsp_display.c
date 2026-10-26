@@ -8,6 +8,7 @@
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_log.h"
+#include "lvgl.h"
 
 static const char *TAG = "bsp_display";
 
@@ -100,4 +101,42 @@ void bsp_display_set_brightness(uint8_t brightness)
 uint8_t bsp_display_get_brightness(void)
 {
     return s_brightness;
+}
+
+/* ------------------------------------------------------------------ */
+/* Fade-in de retroiluminación con lv_anim + LEDC                      */
+/* ------------------------------------------------------------------ */
+
+/* exec_cb de la animación: aplica el brillo sin loguear en cada paso
+ * (bsp_display_set_brightness() imprime un log por llamada).
+ *
+ * El ojo percibe el brillo de forma no lineal: con un duty lineal la
+ * pantalla parece encenderse casi de golpe en los primeros ms. Se aplica
+ * una curva cúbica (duty ∝ v³, aproximación de la corrección gamma) para
+ * que el fade-in se perciba gradual durante toda su duración. */
+static void fade_exec_cb(void *var, int32_t value)
+{
+    (void)var;
+    if (value < 0)   value = 0;
+    if (value > 100) value = 100;
+    s_brightness = (uint8_t)value;
+    uint32_t v    = (uint32_t)value;
+    uint32_t duty = (v * v * v * (LCD_BL_LEDC_DUTY - 1)) / (100U * 100U * 100U);
+    ledc_set_duty(LCD_BL_LEDC_MODE, LCD_BL_LEDC_CHANNEL, duty);
+    ledc_update_duty(LCD_BL_LEDC_MODE, LCD_BL_LEDC_CHANNEL);
+}
+
+void bsp_display_fade_in(uint32_t duration_ms)
+{
+    lv_anim_del(&s_brightness, fade_exec_cb);   /* por si ya había un fade en curso */
+
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, &s_brightness);
+    lv_anim_set_exec_cb(&a, fade_exec_cb);
+    lv_anim_set_values(&a, 0, 100);
+    lv_anim_set_time(&a, duration_ms);
+    lv_anim_set_path_cb(&a, lv_anim_path_linear);   /* la curva perceptual ya está en exec_cb */
+    lv_anim_start(&a);
+    ESP_LOGI(TAG, "backlight fade-in (%u ms)", (unsigned)duration_ms);
 }
