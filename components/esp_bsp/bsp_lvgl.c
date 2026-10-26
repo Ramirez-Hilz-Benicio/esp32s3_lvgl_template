@@ -14,6 +14,29 @@ static const char *TAG = "bsp_lvgl";
 static lv_disp_t *s_lvgl_disp = NULL;
 static lv_indev_t *s_lvgl_touch_indev = NULL;
 
+#if LVGL_VERSION_MAJOR < 9
+/* El ST7789 espera cada píxel RGB565 por SPI con el byte alto primero, pero
+ * LVGL 8 (LV_COLOR_16_SWAP = 0, como exporta SquareLine) los deja en memoria
+ * con el byte bajo primero. esp_lvgl_port sólo ofrece `flags.swap_bytes` para
+ * LVGL 9, así que con LVGL 8 los colores salían intercambiados (p. ej. verde
+ * -> violeta, gris -> verde; blanco y negro no cambian).
+ *
+ * Solución: envolver el flush_cb del puerto e invertir los bytes de cada
+ * píxel justo antes de enviarlo al panel. Se hace en el buffer de dibujo,
+ * que LVGL vuelve a renderizar por completo antes de reutilizarlo. */
+static void (*s_port_flush_cb)(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map) = NULL;
+
+static void flush_swap_bytes_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
+{
+    uint16_t *px    = (uint16_t *)color_map;
+    uint32_t  count = lv_area_get_size(area);
+    for (uint32_t i = 0; i < count; i++) {
+        px[i] = (uint16_t)((px[i] << 8) | (px[i] >> 8));
+    }
+    s_port_flush_cb(drv, area, color_map);
+}
+#endif
+
 esp_err_t bsp_lvgl_init(void)
 {
     const lvgl_port_cfg_t lvgl_cfg = {
@@ -65,6 +88,17 @@ esp_err_t bsp_lvgl_init(void)
      * previous JD9853 panel which needed a manual offset. */
 
     s_lvgl_disp = lvgl_port_add_disp(&disp_cfg);
+    ESP_RETURN_ON_FALSE(s_lvgl_disp, ESP_FAIL, TAG, "LVGL add display failed");
+
+#if LVGL_VERSION_MAJOR < 9
+    /* Instala el swap de bytes (ver flush_swap_bytes_cb) con el lock tomado
+     * para que la tarea de LVGL no haga un flush mientras se cambia. */
+    if (lvgl_port_lock(0)) {
+        s_port_flush_cb = s_lvgl_disp->driver->flush_cb;
+        s_lvgl_disp->driver->flush_cb = flush_swap_bytes_cb;
+        lvgl_port_unlock();
+    }
+#endif
 
     const lvgl_port_touch_cfg_t touch_cfg = {
         .disp = s_lvgl_disp,
