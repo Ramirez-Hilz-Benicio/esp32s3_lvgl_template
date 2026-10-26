@@ -10,7 +10,7 @@
 /**
  * Configure and enable the two-stage timeout:
  *
- *  timeout_to_main_ms   Navigate back to SCREEN_MAIN after this many
+ *  timeout_to_main_ms   Navigate back to SCREEN_HOME after this many
  *                       milliseconds of inactivity while on any other screen.
  *                       Set TIMEOUT_NEVER to disable.
  *
