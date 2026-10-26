@@ -3,6 +3,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
+#include "screens.h"
+#include "scr_home.h"
+#include "scr_system.h"
+#include "scr_settings.h"
 
 #define UPDATE_QUEUE_DEPTH 16
 
@@ -22,14 +26,22 @@ static QueueHandle_t s_queue = NULL;
 
 typedef void (*handler_fn_t)(void *data);
 
-/* Placeholder — remove when UI_UPDATE_MAX has real commands */
-#if UI_UPDATE_MAX == 0
-static const handler_fn_t s_handlers[] = { NULL };
-#else
+/* Botón físico: se ejecuta en el contexto del timer LVGL (seguro para lv_*)
+ * y delega en la pantalla activa la acción contextual. */
+static void handle_button_press(void *data)
+{
+    (void)data;
+    switch (ui_screens_get_current()) {
+        case SCREEN_HOME:     scr_home_on_button();     break;
+        case SCREEN_SYSTEM:   scr_system_on_button();   break;
+        case SCREEN_SETTINGS: scr_settings_on_button(); break;
+        default: break;
+    }
+}
+
 static const handler_fn_t s_handlers[UI_UPDATE_MAX] = {
-    /* [UI_UPDATE_TEMPERATURE] = handle_temperature, */
+    [UI_UPDATE_BUTTON_PRESS] = handle_button_press,
 };
-#endif
 
 /* ------------------------------------------------------------------ */
 
