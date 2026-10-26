@@ -10,7 +10,7 @@
 /**
  * Configure and enable the two-stage timeout:
  *
- *  timeout_to_main_ms   Navigate back to SCREEN_MAIN after this many
+ *  timeout_to_main_ms   Navigate back to SCREEN_HOME after this many
  *                       milliseconds of inactivity while on any other screen.
  *                       Set TIMEOUT_NEVER to disable.
  *
@@ -26,6 +26,9 @@ void disp_timeout_init(uint32_t timeout_to_main_ms, uint32_t timeout_to_off_ms);
 
 /** Change the display-off timeout at runtime (thread-safe from LVGL task). */
 void disp_timeout_set_off_ms(uint32_t timeout_ms);
+
+/** Current display-off timeout (TIMEOUT_NEVER if disabled). */
+uint32_t disp_timeout_get_off_ms(void);
 
 /** Returns true if the display is currently on. */
 bool disp_is_on(void);
